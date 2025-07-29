@@ -4,7 +4,6 @@
 import { useEffect, useRef } from 'react';
 
 // --- Tipe Data untuk Partikel ---
-// Mendefinisikan class di luar useEffect agar lebih rapi
 class Particle {
   x: number;
   y: number;
@@ -12,7 +11,7 @@ class Particle {
   directionY: number;
   size: number;
   color: string;
-  ctx: CanvasRenderingContext2D; // Partikel perlu tahu context untuk menggambar
+  ctx: CanvasRenderingContext2D;
 
   constructor(x: number, y: number, directionX: number, directionY: number, size: number, color: string, ctx: CanvasRenderingContext2D) {
     this.x = x;
@@ -21,7 +20,7 @@ class Particle {
     this.directionY = directionY;
     this.size = size;
     this.color = color;
-    this.ctx = ctx; // Simpan context
+    this.ctx = ctx;
   }
 
   draw() {
@@ -40,42 +39,42 @@ class Particle {
   }
 }
 
-
 export default function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return; // Guard clause untuk canvas
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return; // Guard clause untuk context
+    if (!ctx) return;
 
-    let particlesArray: Particle[];
+    // KUNCI PERBAIKAN: Inisialisasi variabel di dalam scope useEffect
+    let particlesArray: Particle[] = [];
     let animationFrameId: number;
 
     const init = () => {
-      particlesArray = [];
+      particlesArray = []; // Reset array
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      let numberOfParticles = (canvas.height * canvas.width) / 12000;
+      const numberOfParticles = (canvas.height * canvas.width) / 12000;
       for (let i = 0; i < numberOfParticles; i++) {
-        let size = Math.random() * 1.5 + 1;
-        let x = Math.random() * (window.innerWidth - size * 2) + size * 2;
-        let y = Math.random() * (window.innerHeight - size * 2) + size * 2;
-        let directionX = Math.random() * 0.4 - 0.2;
-        let directionY = Math.random() * 0.4 - 0.2;
-        let color = 'rgba(229, 231, 235, 0.5)';
+        // KUNCI PERBAIKAN: Gunakan const untuk variabel yang tidak diubah
+        const size = Math.random() * 1.5 + 1;
+        const x = Math.random() * (window.innerWidth - size * 2) + size * 2;
+        const y = Math.random() * (window.innerHeight - size * 2) + size * 2;
+        const directionX = Math.random() * 0.4 - 0.2;
+        const directionY = Math.random() * 0.4 - 0.2;
+        const color = 'rgba(229, 231, 235, 0.5)';
         particlesArray.push(new Particle(x, y, directionX, directionY, size, color, ctx));
       }
     };
 
     const connect = () => {
-      let opacityValue = 1;
       for (let a = 0; a < particlesArray.length; a++) {
         for (let b = a; b < particlesArray.length; b++) {
-          let distance = (particlesArray[a].x - particlesArray[b].x) ** 2 + (particlesArray[a].y - particlesArray[b].y) ** 2;
+          const distance = (particlesArray[a].x - particlesArray[b].x) ** 2 + (particlesArray[a].y - particlesArray[b].y) ** 2;
           if (distance < (canvas.width / 7) * (canvas.height / 7)) {
-            opacityValue = 1 - distance / 20000;
+            const opacityValue = 1 - distance / 20000;
             ctx.strokeStyle = `rgba(164, 126, 101, ${opacityValue})`;
             ctx.lineWidth = 1;
             ctx.beginPath();

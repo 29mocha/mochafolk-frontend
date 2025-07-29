@@ -118,7 +118,7 @@ export default function OwnerDashboard() {
       setStaffList(prevList => [...prevList, response.data]);
       setNewStaffUsername('');
       setNewStaffPassword('');
-    } catch (error: any) {
+    } catch (_error: any) {
       setStaffError('Gagal menambah staf. Coba username lain.');
     }
   };
@@ -129,6 +129,7 @@ export default function OwnerDashboard() {
         await api.delete(`/shops/my-shop/staff/${staffId}/delete/`);
         setStaffList(prevList => prevList.filter(staff => staff.id !== staffId));
       } catch (error) {
+        console.error("Gagal mengambil data:", error);
         alert("Gagal menghapus staf.");
       }
     }

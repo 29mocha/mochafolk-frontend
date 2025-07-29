@@ -67,7 +67,7 @@ export default function BaristaDashboard() {
     try {
       setQueues(prevQueues => prevQueues.map(q => q.id === queueId ? { ...q, status: 'ready' } : q));
       await api.patch(`/shops/${shopId}/queues/${queueId}/`, { status: 'ready' });
-    } catch (error) {
+    } catch (_error) {
       alert("Gagal mengubah status.");
     }
   };
@@ -75,7 +75,7 @@ export default function BaristaDashboard() {
   const handleRingPager = async (queueId: number) => {
     try {
       await api.post(`/shops/${shopId}/queues/${queueId}/ring/`, {});
-    } catch (error) {
+    } catch (_error) {
       alert("Gagal mengirim sinyal pager.");
     }
   };
@@ -86,7 +86,7 @@ export default function BaristaDashboard() {
             await api.post(`/shops/${shopId}/reset-queue/`, {});
             setQueues([]);
             alert("Antrian berhasil direset.");
-        } catch (error) {
+        } catch (_error) {
             alert("Gagal mereset antrian.");
         }
     }

@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import ParticleBackground from '@/components/ParticleBackground';
-import axios from 'axios';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -21,8 +20,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(username, password);
-    } catch (err: any) {
-      setError(err.message || 'Login gagal.');
+    } catch (err: unknown) {
+      if (err instanceof Error)
+        setError(err.message || 'Login gagal.');
     } finally {
       setLoading(false);
     }

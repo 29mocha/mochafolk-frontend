@@ -149,6 +149,7 @@ export default function QueuePage() {
         setIsReady(false);
         hasBeenNotified.current = false;
       } catch (error) {
+        console.error("Gagal mengambil data:", error);
         alert("Gagal mengambil nomor antrian.");
       }
   };

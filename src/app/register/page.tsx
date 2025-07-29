@@ -28,23 +28,25 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // Kirim data registrasi ke backend, termasuk email
       await axios.post('http://127.0.0.1:8000/api/register/', {
         username,
-        email, // Kirim email
         password,
+        email, // Pastikan email dikirim
       });
 
-      // Jika registrasi berhasil, langsung coba login
       await login(username, password);
 
-    } catch (err: any) {
-      if (err.response && err.response.data) {
-        // Menampilkan pesan error spesifik dari backend jika ada
+    } catch (err: unknown) {
+      // KUNCI PERBAIKAN: Cek apakah error berasal dari Axios
+      if (axios.isAxiosError(err) && err.response && err.response.data) {
         const errorData = err.response.data;
-        if (errorData.username) setError(errorData.username[0]);
-        else if (errorData.email) setError(errorData.email[0]);
-        else setError('Gagal melakukan registrasi. Coba username lain.');
+        if (errorData.username) {
+          setError(errorData.username[0]);
+        } else if (errorData.email) {
+          setError(errorData.email[0]);
+        } else {
+          setError('Gagal melakukan registrasi. Coba username lain.');
+        }
       } else {
         setError('Gagal melakukan registrasi. Periksa koneksi Anda.');
       }

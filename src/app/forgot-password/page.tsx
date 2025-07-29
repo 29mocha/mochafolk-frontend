@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     try {
       const response = await axios.post('http://127.0.0.1:8000/api/password-reset/', { email });
       setMessage(response.data.message);
-    } catch (err) {
+    } catch (_err: any) {
       setError('Gagal mengirim email. Periksa kembali alamat email Anda.');
     } finally {
       setLoading(false);
