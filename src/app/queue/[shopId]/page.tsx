@@ -27,8 +27,6 @@ function urlBase64ToUint8Array(base64String: string) {
 export default function QueuePage() {
   const params = useParams();
   const shopId = params.shopId as string;
-  
-  // --- KUNCI PERBAIKAN: Gunakan URL dari env ---
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   const [shop, setShop] = useState<CoffeeShop | null>(null);
@@ -58,9 +56,7 @@ export default function QueuePage() {
       return true;
     } catch (error) {
       console.error("Gagal sinkronisasi langganan:", error);
-      if (Notification.permission === 'denied') {
-        setNotificationStatus('denied');
-      }
+      if (Notification.permission === 'denied') setNotificationStatus('denied');
       return false;
     }
   }, [shopId, apiUrl]);
@@ -83,10 +79,12 @@ export default function QueuePage() {
 
   useEffect(() => {
     if (!shopId) return;
+    
+    // KUNCI PERBAIKAN: Hanya cek izin, jangan langsung set 'subscribed'
     if (Notification.permission === 'granted') {
-      syncPushSubscription();
+        syncPushSubscription(); // Coba sinkronkan di latar belakang
     } else if (Notification.permission === 'denied') {
-      setNotificationStatus('denied');
+        setNotificationStatus('denied');
     }
 
     axios.get(`${apiUrl}/api/shops/${shopId}/`).then(res => setShop(res.data));
