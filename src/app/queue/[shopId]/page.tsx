@@ -35,6 +35,10 @@ export default function QueuePage() {
   const [notificationStatus, setNotificationStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'denied'>('idle');
   const hasBeenNotified = useRef(false);
 
+  // Gunakan environment variable untuk URL API dan WebSocket
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const wsUrl = apiUrl.replace(/^http/, 'ws');
+
   // --- Fungsi untuk Mendaftar & Sinkronisasi Notifikasi ---
   const syncPushSubscription = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
@@ -45,7 +49,7 @@ export default function QueuePage() {
       let subscription = await swRegistration.pushManager.getSubscription();
 
       if (!subscription) {
-        const vapidResponse = await axios.get('http://127.0.0.1:8000/api/shops/vapid-public-key/');
+        const vapidResponse = await axios.get(`${apiUrl}/api/shops/vapid-public-key/`);
         const vapidPublicKey = vapidResponse.data.public_key;
         const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
         
@@ -56,7 +60,7 @@ export default function QueuePage() {
       }
 
       await axios.post(
-        `http://127.0.0.1:8000/api/shops/${shopId}/save-subscription/`,
+        `${apiUrl}/api/shops/${shopId}/save-subscription/`,
         { subscription_info: subscription }
       );
       
@@ -69,7 +73,7 @@ export default function QueuePage() {
       }
       return false;
     }
-  }, [shopId]);
+  }, [shopId, apiUrl]);
 
   const handleEnableNotifications = async () => {
     setNotificationStatus('subscribing');
@@ -97,19 +101,19 @@ export default function QueuePage() {
       setNotificationStatus('denied');
     }
 
-    axios.get(`http://127.0.0.1:8000/api/shops/${shopId}/`).then(res => setShop(res.data));
+    axios.get(`${apiUrl}/api/shops/${shopId}/`).then(res => setShop(res.data));
     const savedQueue = localStorage.getItem('mochafolk-queue');
     if (savedQueue) {
       const parsedQueue: StoredQueueInfo = JSON.parse(savedQueue);
       if (parsedQueue.shopId === shopId) {
         setYourQueueInfo(parsedQueue);
-        axios.get(`http://127.0.0.1:8000/api/shops/${shopId}/queues/${parsedQueue.id}/`)
+        axios.get(`${apiUrl}/api/shops/${shopId}/queues/${parsedQueue.id}/`)
           .then(res => { if (res.data.status === 'ready') setIsReady(true); });
       }
     }
     setIsLoading(false);
 
-    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/queue/${shopId}/`);
+    const socket = new WebSocket(`${wsUrl}/ws/queue/${shopId}/`);
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       const updatedQueue: QueueItem = data.message;
@@ -124,8 +128,9 @@ export default function QueuePage() {
       }
     };
     return () => socket.close();
-  }, [shopId, syncPushSubscription]);
+  }, [shopId, syncPushSubscription, apiUrl, wsUrl]);
   
+  // Efek terpisah untuk notifikasi alert
   useEffect(() => {
     if (isReady && yourQueueInfo && !hasBeenNotified.current) {
         new Audio('/sounds/notification.wav').play().catch(e => console.log("Gagal memutar suara notifikasi:", e));
@@ -136,7 +141,7 @@ export default function QueuePage() {
 
   const handleGetQueueNumber = async () => {
       try {
-        const response = await axios.post(`http://127.0.0.1:8000/api/shops/${shopId}/queues/`, {});
+        const response = await axios.post(`${apiUrl}/api/shops/${shopId}/queues/`, {});
         const newQueueItem: QueueItem = response.data;
         const newQueueInfo = { id: newQueueItem.id, queue_number: newQueueItem.queue_number, shopId: shopId };
         localStorage.setItem('mochafolk-queue', JSON.stringify(newQueueInfo));
