@@ -1,12 +1,11 @@
 // src/app/dashboard/[shopId]/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
-import Link from 'next/link';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
 // --- Tipe Data ---
@@ -26,6 +25,7 @@ export default function BaristaDashboard() {
   const [shopName, setShopName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Efek utama untuk mengambil data awal dan koneksi WebSocket
   useEffect(() => {
     if (!shopId || !accessToken) return;
 
@@ -44,11 +44,8 @@ export default function BaristaDashboard() {
       }
     };
     fetchInitialData();
-
-    // --- KUNCI PERBAIKAN: Gunakan URL dari env untuk WebSocket ---
-    const wsUrl = (process.env.NEXT_PUBLIC_API_URL || 'ws://127.0.0.1:8000').replace(/^http/, 'ws');
-    const socket = new WebSocket(`${wsUrl}/ws/queue/${shopId}/`);
-    
+      
+    const socket = new WebSocket(`wss://api.mochafolk.com/ws/queue/${shopId}/`);
     socket.onopen = () => console.log("Dasbor terhubung ke WebSocket");
 
     socket.onmessage = (event) => {
@@ -63,6 +60,9 @@ export default function BaristaDashboard() {
         );
       }
     };
+    
+    socket.onclose = () => console.log("Koneksi WebSocket ditutup.");
+    socket.onerror = (error) => console.error("Error WebSocket:", error);
 
     return () => socket.close();
 
@@ -101,7 +101,13 @@ export default function BaristaDashboard() {
   const readyQueues = queues.filter(q => q.status === 'ready');
 
   if (isLoading) {
-    return <p className="text-center mt-10">Memuat dasbor barista...</p>;
+    return (
+        <ProtectedRoute>
+            <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900">
+                Memuat dasbor barista...
+            </div>
+        </ProtectedRoute>
+    );
   }
 
   return (
@@ -128,7 +134,7 @@ export default function BaristaDashboard() {
               <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-150px)]">
                 {waitingQueues.map(queue => (
                   <div key={queue.id} className="flex justify-between items-center bg-yellow-100 dark:bg-yellow-900/50 p-4 rounded-lg">
-                    <span className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">{queue.queue_number}</span>
+                    <span className="text-2xl font-bold text-yellow-800 dark:text-yellow-300">{queue.queue_number}</span>
                     <button
                       onClick={() => handleMarkAsReady(queue.id)}
                       className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg"
@@ -148,7 +154,7 @@ export default function BaristaDashboard() {
               <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-150px)]">
                 {readyQueues.map(queue => (
                   <div key={queue.id} className="flex justify-between items-center bg-green-200 dark:bg-green-900/50 p-4 rounded-lg">
-                    <span className="text-2xl font-bold text-green-800 dark:text-green-200">{queue.queue_number}</span>
+                    <span className="text-2xl font-bold text-green-800 dark:text-green-300">{queue.queue_number}</span>
                     <button
                       onClick={() => handleRingPager(queue.id)}
                       className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded-lg text-sm"
