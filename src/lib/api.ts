@@ -1,14 +1,16 @@
 // src/lib/api.ts
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
 
-const baseURL = 'http://127.0.0.1:8000/api';
+// --- KUNCI PERBAIKAN ---
+// Ambil URL API dari environment variable. Jika tidak ada (saat di lokal),
+// gunakan localhost sebagai default.
+const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 const api = axios.create({
-    baseURL,
+    baseURL: `${baseURL}/api/shops`, // Atur base URL yang benar
 });
 
-// Ini adalah "interceptor" atau penjegat. Ia akan berjalan sebelum setiap permintaan dikirim.
+// Interceptor untuk menyertakan token
 api.interceptors.request.use(
     config => {
         const token = localStorage.getItem('accessToken');
@@ -22,34 +24,26 @@ api.interceptors.request.use(
     }
 );
 
-// Interceptor ini berjalan JIKA sebuah permintaan GAGAL.
+// Interceptor untuk menangani token kedaluwarsa
 api.interceptors.response.use(
-    response => response, // Jika sukses, langsung kembalikan respons
+    response => response,
     async error => {
         const originalRequest = error.config;
-
-        // Jika error adalah 401 dan ini bukan permintaan refresh token
         if (error.response.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true; // Tandai bahwa kita sudah mencoba ulang
-
+            originalRequest._retry = true;
             try {
                 const refreshToken = localStorage.getItem('refreshToken');
-                const response = await axios.post(`${baseURL}/token/refresh/`, {
+                // Gunakan URL lengkap untuk refresh token
+                const response = await axios.post(`${baseURL}/api/token/refresh/`, {
                     refresh: refreshToken,
                 });
-
                 const { access } = response.data;
                 localStorage.setItem('accessToken', access);
-
-                // Perbarui header di permintaan original dan coba lagi
                 originalRequest.headers['Authorization'] = `Bearer ${access}`;
                 return api(originalRequest);
             } catch (refreshError) {
-                // Jika refresh token gagal, logout pengguna
-                console.error("Sesi habis, silakan login ulang.", refreshError);
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('refreshToken');
-                // Arahkan ke halaman login
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
