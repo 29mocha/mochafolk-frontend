@@ -156,8 +156,9 @@ export default function OwnerDashboard() {
 
   const handleDownloadQRCode = async () => {
     if (!shop) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/api/shops/${shop.id}/qr-code/`, {
+      const response = await axios.get(`${apiUrl}/api/shops/${shop.id}/qr-code/`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -182,6 +183,8 @@ export default function OwnerDashboard() {
       </ProtectedRoute>
     );
   }
+  
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   return (
     <ProtectedRoute>
@@ -201,7 +204,7 @@ export default function OwnerDashboard() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-xl font-bold">Paket {shop.plan}</h2>
-                    <p className="text-sm opacity-90">{shop.plan === 'PRO' ? 'Anda memiliki akses ke semua fitur tanpa batas.' : 'Batas 30 antrian per hari. Upgrade untuk fitur lebih.'}</p>
+                    <p className="text-sm opacity-90">{shop.plan === 'PRO' ? 'Anda memiliki akses ke semua fitur tanpa batas.' : 'Batas 20 antrian per hari. Upgrade untuk fitur lebih.'}</p>
                   </div>
                   {shop.plan === 'BASIC' && (<button onClick={handleUpgrade} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0">Upgrade ke Pro</button>)}
                 </div>
@@ -236,7 +239,7 @@ export default function OwnerDashboard() {
                       <div>
                         <div className="flex justify-between items-start">
                           <div className="flex items-center space-x-4">
-                            {shop.logo && <img src={shop.logo} alt="Logo" className="w-16 h-16 rounded-full object-cover"/>}
+                            {shop.logo && <img src={`${apiUrl}${shop.logo}`} alt="Logo" className="w-16 h-16 rounded-full object-cover"/>}
                             <div>
                               <h2 className="text-3xl font-bold">{shop.name}</h2>
                               <p className="text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{shop.address || 'Alamat belum diatur'}</p>
@@ -267,8 +270,8 @@ export default function OwnerDashboard() {
                     <h3 className="text-lg font-semibold mb-2">QR Code Antrian</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Klik gambar untuk melihat, atau klik tombol untuk download.</p>
                     <div className="flex justify-center my-4">
-                      <a href={`http://127.0.0.1:8000/api/shops/${shop.id}/qr-code/`} target="_blank" rel="noopener noreferrer" className="inline-block bg-white p-2 rounded-lg">
-                        <img src={`http://127.0.0.1:8000/api/shops/${shop.id}/qr-code/`} alt={`QR Code for ${shop.name}`} className="w-48 h-48" />
+                      <a href={`${apiUrl}/api/shops/${shop.id}/qr-code/`} target="_blank" rel="noopener noreferrer" className="inline-block bg-white p-2 rounded-lg">
+                        <img src={`${apiUrl}/api/shops/${shop.id}/qr-code/`} alt={`QR Code for ${shop.name}`} className="w-48 h-48" />
                       </a>
                     </div>
                     <button onClick={handleDownloadQRCode} className="block mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Download</button>

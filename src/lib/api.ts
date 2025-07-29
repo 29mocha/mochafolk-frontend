@@ -1,13 +1,12 @@
 // src/lib/api.ts
 import axios from 'axios';
 
-// --- KUNCI PERBAIKAN ---
-// Ambil URL API dari environment variable. Jika tidak ada (saat di lokal),
-// gunakan localhost sebagai default.
+// Ambil URL API dari environment variable.
 const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 const api = axios.create({
-    baseURL: `${baseURL}/api/shops`, // Atur base URL yang benar
+    // --- KUNCI PERBAIKAN: Atur baseURL hanya ke akar API ---
+    baseURL: `${baseURL}/api`,
 });
 
 // Interceptor untuk menyertakan token
@@ -33,7 +32,6 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             try {
                 const refreshToken = localStorage.getItem('refreshToken');
-                // Gunakan URL lengkap untuk refresh token
                 const response = await axios.post(`${baseURL}/api/token/refresh/`, {
                     refresh: refreshToken,
                 });
