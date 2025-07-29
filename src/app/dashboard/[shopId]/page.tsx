@@ -1,20 +1,22 @@
 // src/app/dashboard/[shopId]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'; // Impor ThemeSwitcher
+import Link from 'next/link';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 
-// Definisikan tipe data
+// --- Tipe Data ---
 interface QueueItem {
   id: number;
   queue_number: number;
   status: string;
 }
 
+// --- Komponen Utama ---
 export default function BaristaDashboard() {
   const params = useParams();
   const shopId = params.shopId as string;
@@ -42,8 +44,11 @@ export default function BaristaDashboard() {
       }
     };
     fetchInitialData();
-      
-    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/queue/${shopId}/`);
+
+    // --- KUNCI PERBAIKAN: Gunakan URL dari env untuk WebSocket ---
+    const wsUrl = (process.env.NEXT_PUBLIC_API_URL || 'ws://127.0.0.1:8000').replace(/^http/, 'ws');
+    const socket = new WebSocket(`${wsUrl}/ws/queue/${shopId}/`);
+    
     socket.onopen = () => console.log("Dasbor terhubung ke WebSocket");
 
     socket.onmessage = (event) => {
@@ -58,7 +63,7 @@ export default function BaristaDashboard() {
         );
       }
     };
-    
+
     return () => socket.close();
 
   }, [shopId, accessToken]);
@@ -67,7 +72,7 @@ export default function BaristaDashboard() {
     try {
       setQueues(prevQueues => prevQueues.map(q => q.id === queueId ? { ...q, status: 'ready' } : q));
       await api.patch(`/shops/${shopId}/queues/${queueId}/`, { status: 'ready' });
-    } catch (_error) {
+    } catch (error) {
       alert("Gagal mengubah status.");
     }
   };
@@ -75,7 +80,7 @@ export default function BaristaDashboard() {
   const handleRingPager = async (queueId: number) => {
     try {
       await api.post(`/shops/${shopId}/queues/${queueId}/ring/`, {});
-    } catch (_error) {
+    } catch (error) {
       alert("Gagal mengirim sinyal pager.");
     }
   };
@@ -86,7 +91,7 @@ export default function BaristaDashboard() {
             await api.post(`/shops/${shopId}/reset-queue/`, {});
             setQueues([]);
             alert("Antrian berhasil direset.");
-        } catch (_error) {
+        } catch (error) {
             alert("Gagal mereset antrian.");
         }
     }
@@ -96,7 +101,7 @@ export default function BaristaDashboard() {
   const readyQueues = queues.filter(q => q.status === 'ready');
 
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900">Memuat dasbor barista...</div>;
+    return <p className="text-center mt-10">Memuat dasbor barista...</p>;
   }
 
   return (
