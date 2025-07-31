@@ -32,73 +32,72 @@ export default function QueuePage() {
   const [yourQueueInfo, setYourQueueInfo] = useState<StoredQueueInfo | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [notificationStatus, setNotificationStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'denied'>('idle');
+  const [notificationStatus, setNotificationStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'denied' | 'unsupported'>('idle');
   const hasBeenNotified = useRef(false);
 
-  // Gunakan environment variable untuk URL API dan WebSocket
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const wsUrl = apiUrl.replace(/^http/, 'ws');
 
-  // --- Fungsi untuk Mendaftar & Sinkronisasi Notifikasi ---
-  const syncPushSubscription = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-    
+  // --- Logika Push Notification ---
+  const subscribeToPushNotifications = useCallback(async () => {
+    // KUNCI PERBAIKAN: Cek semua fitur yang dibutuhkan di awal
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setNotificationStatus('unsupported');
+      alert("Browser Anda tidak mendukung notifikasi lanjutan.");
+      return;
+    }
+    setNotificationStatus('subscribing');
+
     try {
       await navigator.serviceWorker.register('/sw.js');
       const swRegistration = await navigator.serviceWorker.ready;
-      let subscription = await swRegistration.pushManager.getSubscription();
-
-      if (!subscription) {
-        const vapidResponse = await axios.get(`${apiUrl}/api/shops/vapid-public-key/`);
-        const vapidPublicKey = vapidResponse.data.public_key;
-        const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-        
-        subscription = await swRegistration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: convertedKey,
-        });
+      
+      const permission = await window.Notification.requestPermission();
+      if (permission !== 'granted') {
+        setNotificationStatus('denied');
+        throw new Error('Izin notifikasi ditolak.');
       }
 
+      const vapidResponse = await axios.get(`${apiUrl}/api/shops/vapid-public-key/`);
+      const vapidPublicKey = vapidResponse.data.public_key;
+      const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+
+      const subscription = await swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey,
+      });
+      
       await axios.post(
         `${apiUrl}/api/shops/${shopId}/save-subscription/`,
         { subscription_info: subscription }
       );
       
       setNotificationStatus('subscribed');
-      return true;
-    } catch (error) {
-      console.error("Gagal sinkronisasi langganan:", error);
-      if (Notification.permission === 'denied') {
-        setNotificationStatus('denied');
-      }
-      return false;
-    }
-  }, [shopId, apiUrl]);
-
-  const handleEnableNotifications = async () => {
-    setNotificationStatus('subscribing');
-    const permission = await window.Notification.requestPermission();
-    if (permission !== 'granted') {
-      setNotificationStatus('denied');
-      return;
-    }
-    const success = await syncPushSubscription();
-    if (success) {
       alert('Notifikasi lanjutan berhasil diaktifkan!');
-    } else {
-      alert('Gagal mengaktifkan notifikasi lanjutan.');
+    } catch (error: any) {
+      console.error('Gagal berlangganan notifikasi:', error);
+      if (error.response) {
+        alert(`Gagal mengaktifkan notifikasi: ${JSON.stringify(error.response.data)}`);
+      } else {
+        alert('Gagal mengaktifkan notifikasi lanjutan.');
+      }
       setNotificationStatus('idle');
     }
-  };
+  }, [shopId, apiUrl]);
 
   // Efek utama untuk memuat data awal
   useEffect(() => {
     if (!shopId) return;
 
-    if (Notification.permission === 'granted') {
-      syncPushSubscription();
-    } else if (Notification.permission === 'denied') {
-      setNotificationStatus('denied');
+    // KUNCI PERBAIKAN: Selalu cek keberadaan 'Notification' sebelum digunakan
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotificationStatus('subscribed');
+      } else if (Notification.permission === 'denied') {
+        setNotificationStatus('denied');
+      }
+    } else {
+      setNotificationStatus('unsupported');
     }
 
     axios.get(`${apiUrl}/api/shops/${shopId}/`).then(res => setShop(res.data));
@@ -123,17 +122,16 @@ export default function QueuePage() {
         if (data.type === 'queue_update' && updatedQueue.status === 'ready') {
           setIsReady(true);
         } else if (data.type === 'pager_ring') {
-          new Audio('/sounds/notification.wav').play().catch(e => console.log("Gagal memutar suara pager:", e));
+          new Audio('/sounds/notification.wav').play();
         }
       }
     };
     return () => socket.close();
-  }, [shopId, syncPushSubscription, apiUrl, wsUrl]);
+  }, [shopId, apiUrl]);
   
-  // Efek terpisah untuk notifikasi alert
   useEffect(() => {
     if (isReady && yourQueueInfo && !hasBeenNotified.current) {
-        new Audio('/sounds/notification.wav').play().catch(e => console.log("Gagal memutar suara notifikasi:", e));
+        new Audio('/sounds/notification.wav').play();
         alert(`🔔 Pesanan Anda #${yourQueueInfo.queue_number} sudah SIAP diambil!`);
         hasBeenNotified.current = true;
     }
@@ -142,8 +140,7 @@ export default function QueuePage() {
   const handleGetQueueNumber = async () => {
       try {
         const response = await axios.post(`${apiUrl}/api/shops/${shopId}/queues/`, {});
-        const newQueueItem: QueueItem = response.data;
-        const newQueueInfo = { id: newQueueItem.id, queue_number: newQueueItem.queue_number, shopId: shopId };
+        const newQueueInfo: StoredQueueInfo = { id: response.data.id, queue_number: response.data.queue_number, shopId: shopId };
         localStorage.setItem('mochafolk-queue', JSON.stringify(newQueueInfo));
         setYourQueueInfo(newQueueInfo);
         setIsReady(false);
@@ -175,7 +172,7 @@ export default function QueuePage() {
           <div className="flex justify-center items-center flex-col mb-8">
             {shop?.logo && (
               <img 
-                src={shop.logo} 
+                src={`${apiUrl}${shop.logo}`} 
                 alt="Logo Toko"
                 className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#A47E65]/50"
               />
@@ -218,13 +215,14 @@ export default function QueuePage() {
           
            <div className="mt-6 text-center">
             {notificationStatus === 'idle' && (
-              <button onClick={handleEnableNotifications} className="text-xs text-gray-400 hover:text-white underline">
+              <button onClick={subscribeToPushNotifications} className="text-xs text-gray-400 hover:text-white underline">
                 Aktifkan Notifikasi Lanjutan (jika browser ditutup)
               </button>
             )}
             {notificationStatus === 'subscribing' && <p className="text-xs text-yellow-400">Mengaktifkan...</p>}
             {notificationStatus === 'subscribed' && <p className="text-xs text-green-400">✓ Notifikasi lanjutan aktif.</p>}
             {notificationStatus === 'denied' && <p className="text-xs text-red-400">Anda telah memblokir notifikasi.</p>}
+            {notificationStatus === 'unsupported' && <p className="text-xs text-gray-500">Browser tidak mendukung fitur ini.</p>}
           </div>
         </div>
       </main>
