@@ -238,7 +238,7 @@ export default function OwnerDashboard() {
                       <div>
                         <div className="flex justify-between items-start">
                           <div className="flex items-center space-x-4">
-                            {shop.logo && <img src={`${apiUrl}${shop.logo}`} alt="Logo" className="w-16 h-16 rounded-full object-cover"/>}
+                            {shop.logo && <img src={shop.logo} alt="Logo" className="w-16 h-16 rounded-full object-cover"/>}
                             <div>
                               <h2 className="text-3xl font-bold">{shop.name}</h2>
                               <p className="text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{shop.address || 'Alamat belum diatur'}</p>
