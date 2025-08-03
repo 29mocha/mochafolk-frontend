@@ -87,18 +87,14 @@ export default function QueuePage() {
     }
   };
 
-  // --- KUNCI PERBAIKAN: Fungsi ini sekarang yang akan digunakan ---
   const handleSessionEnd = () => {
-    // Hentikan suara
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0; // Reset audio ke awal
+      audioRef.current.currentTime = 0;
     }
-    // Hentikan getaran
     if ('vibrate' in navigator) {
       navigator.vibrate(0);
     }
-    // Hapus sesi dari localStorage dan reset state
     localStorage.removeItem('mochafolk-queue');
     setYourQueueInfo(null);
     setIsReady(false);
@@ -112,66 +108,70 @@ export default function QueuePage() {
     );
   }
 
-  if (isReady) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-green-500 text-white animate-pulse">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-widest">PESANAN SIAP</h1>
-          <p className="text-9xl font-bold my-4">{yourQueueInfo?.queue_number}</p>
-          <p className="text-xl">Silakan ambil pesanan Anda</p>
-          {/* --- KUNCI PERBAIKAN: Tombol ini sekarang memanggil handleSessionEnd --- */}
-          <button
-            onClick={handleSessionEnd}
-            className="mt-8 w-full bg-white text-green-600 font-bold py-4 rounded-lg text-lg"
-          >
-            Selesai
-          </button>
-        </div>
-      </main>
-    );
-  }
-
+  // --- KUNCI PERBAIKAN: Logika render disatukan di sini ---
   return (
     <>
-      <ParticleBackground />
-      <main className="relative z-10 flex min-h-screen flex-col items-center justify-center p-6 bg-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>
-        <div className="w-full max-w-sm text-center text-white">
-          <div className="flex justify-center items-center flex-col mb-8">
-            {shop?.logo && (
-              <img 
-                src={`${apiUrl}${shop.logo}`} 
-                alt="Logo Toko"
-                className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#A47E65]/50"
-              />
-            )}
-            <h1 className="text-5xl font-bold" style={{ fontFamily: 'Amatic SC, cursive' }}>
-              {shop?.name || 'MochaFolk'}
-            </h1>
-            <p className="text-gray-400 text-sm tracking-widest mt-1">SISTEM ANTRIAN</p>
-          </div>
-          
-          {!yourQueueInfo ? (
+      {/* Tampilan Notifikasi Layar Penuh (jika isReady true) */}
+      {isReady && (
+        <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-green-500 text-white animate-pulse">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold tracking-widest">PESANAN SIAP</h1>
+            <p className="text-9xl font-bold my-4">{yourQueueInfo?.queue_number}</p>
+            <p className="text-xl">Silakan ambil pesanan Anda</p>
             <button
-              onClick={handleGetQueueNumber}
-              className="w-full py-3 px-4 bg-[#A47E65] hover:opacity-90 text-white font-bold text-lg rounded-md transition-opacity border border-gray-600"
+              onClick={handleSessionEnd}
+              className="mt-8 w-full bg-white text-green-600 font-bold py-4 rounded-lg text-lg"
             >
-              Ambil Nomor Antrian
+              Selesai
             </button>
-          ) : (
-            <>
-              <div className="p-8 rounded-lg" style={{ backgroundColor: 'rgba(20, 20, 20, 0.5)', backdropFilter: 'blur(8px)', border: '1px solid #52525b' }}>
-                <p className="font-bold text-sm text-gray-400">NOMOR ANTRIAN ANDA</p>
-                <p className="text-7xl font-extrabold my-2 text-gray-200">{yourQueueInfo.queue_number}</p>
-                <p className="text-gray-400">Mohon tunggu, pesanan sedang dibuat.</p>
+          </div>
+        </main>
+      )}
+
+      {/* Tampilan Utama (jika isReady false) */}
+      {!isReady && (
+        <>
+          <ParticleBackground />
+          <main className="relative z-10 flex min-h-screen flex-col items-center justify-center p-6 bg-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <div className="w-full max-w-sm text-center text-white">
+              <div className="flex justify-center items-center flex-col mb-8">
+                {shop?.logo && (
+                  <img 
+                    src={`${apiUrl}${shop.logo}`} 
+                    alt="Logo Toko"
+                    className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#A47E65]/50"
+                  />
+                )}
+                <h1 className="text-5xl font-bold" style={{ fontFamily: 'Amatic SC, cursive' }}>
+                  {shop?.name || 'MochaFolk'}
+                </h1>
+                <p className="text-gray-400 text-sm tracking-widest mt-1">SISTEM ANTRIAN</p>
               </div>
-              <div className="mt-6 p-3 bg-yellow-900/50 border border-yellow-700/50 rounded-lg text-yellow-300 text-xs">
-                <p className="font-semibold">🔔 PENTING</p>
-                <p className="mt-1">Untuk notifikasi suara, jangan tutup halaman ini.</p>
-              </div>
-            </>
-          )}
-        </div>
-      </main>
+              
+              {!yourQueueInfo ? (
+                <button
+                  onClick={handleGetQueueNumber}
+                  className="w-full py-3 px-4 bg-[#A47E65] hover:opacity-90 text-white font-bold text-lg rounded-md transition-opacity border border-gray-600"
+                >
+                  Ambil Nomor Antrian
+                </button>
+              ) : (
+                <>
+                  <div className="p-8 rounded-lg" style={{ backgroundColor: 'rgba(20, 20, 20, 0.5)', backdropFilter: 'blur(8px)', border: '1px solid #52525b' }}>
+                    <p className="font-bold text-sm text-gray-400">NOMOR ANTRIAN ANDA</p>
+                    <p className="text-7xl font-extrabold my-2 text-gray-200">{yourQueueInfo.queue_number}</p>
+                    <p className="text-gray-400">Mohon tunggu, pesanan sedang dibuat.</p>
+                  </div>
+                  <div className="mt-6 p-3 bg-yellow-900/50 border border-yellow-700/50 rounded-lg text-yellow-300 text-xs">
+                    <p className="font-semibold">🔔 PENTING</p>
+                    <p className="mt-1">Untuk notifikasi suara, jangan tutup halaman ini.</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </main>
+        </>
+      )}
     </>
   );
 }
