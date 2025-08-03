@@ -11,18 +11,6 @@ interface QueueItem { id: number; queue_number: number; status: string; }
 interface CoffeeShop { id: number; name: string; logo: string | null; }
 interface StoredQueueInfo { id: number; queue_number: number; shopId: string; }
 
-// --- Fungsi Helper ---
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
 // --- Komponen Utama ---
 export default function QueuePage() {
   const params = useParams();
@@ -34,79 +22,15 @@ export default function QueuePage() {
   const [yourQueueInfo, setYourQueueInfo] = useState<StoredQueueInfo | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [notificationStatus, setNotificationStatus] = useState<'idle' | 'subscribing' | 'subscribed' | 'denied' | 'unsupported'>('idle');
-  
-  const [isAppleDevice, setIsAppleDevice] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // --- KUNCI #1: Ref untuk melacak apakah audio sudah "di-unlock" ---
   const audioUnlockedRef = useRef(false);
 
-  // --- Logika Push Notification ---
-  const syncPushSubscription = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-    try {
-      await navigator.serviceWorker.register('/sw.js');
-      const swRegistration = await navigator.serviceWorker.ready;
-      let subscription = await swRegistration.pushManager.getSubscription();
-      if (!subscription) {
-        const vapidResponse = await axios.get(`${apiUrl}/api/shops/vapid-public-key/`);
-        const vapidPublicKey = vapidResponse.data.public_key;
-        const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-        subscription = await swRegistration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: convertedKey,
-        });
-      }
-      await axios.post(`${apiUrl}/api/shops/${shopId}/save-subscription/`, { subscription_info: subscription });
-      setNotificationStatus('subscribed');
-      return true;
-    } catch (error) {
-      console.error("Gagal sinkronisasi langganan:", error);
-      if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-        setNotificationStatus('denied');
-      }
-      return false;
-    }
-  }, [shopId, apiUrl]);
-
-  const handleEnableNotifications = async () => {
-    setNotificationStatus('subscribing');
-    if (typeof Notification === 'undefined') {
-        setNotificationStatus('unsupported');
-        return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      setNotificationStatus('denied');
-      return;
-    }
-    const success = await syncPushSubscription();
-    if (success) {
-      alert('Notifikasi lanjutan berhasil diaktifkan!');
-    } else {
-      alert('Gagal mengaktifkan notifikasi lanjutan.');
-      setNotificationStatus('idle');
-    }
-  };
-
-  // Efek utama untuk memuat data dan koneksi
+  // Efek untuk memuat data awal dan koneksi
   useEffect(() => {
     if (!shopId) return;
     
-    // Deteksi perangkat Apple saat komponen dimuat
-    // KUNCI PERBAIKAN: Gunakan 'any' untuk menghindari error TypeScript
-    setIsAppleDevice(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
-
-    if (typeof Notification !== 'undefined') {
-      if (Notification.permission === 'granted') {
-        syncPushSubscription();
-      } else if (Notification.permission === 'denied') {
-        setNotificationStatus('denied');
-      }
-    } else {
-      setNotificationStatus('unsupported');
-    }
-
     axios.get(`${apiUrl}/api/shops/${shopId}/`).then(res => setShop(res.data));
     const savedQueue = localStorage.getItem('mochafolk-queue');
     if (savedQueue) {
@@ -124,6 +48,7 @@ export default function QueuePage() {
       const data = JSON.parse(event.data);
       const updatedQueue: QueueItem = data.message;
       const latestQueueInfo: StoredQueueInfo | null = JSON.parse(localStorage.getItem('mochafolk-queue') || 'null');
+      
       if (latestQueueInfo && updatedQueue.id === latestQueueInfo.id) {
         if (data.type === 'queue_update' && updatedQueue.status === 'ready') {
           setIsReady(true);
@@ -133,18 +58,19 @@ export default function QueuePage() {
       }
     };
     return () => socket.close();
-  }, [shopId, apiUrl, wsUrl, syncPushSubscription]);
+  }, [shopId, apiUrl, wsUrl]);
 
-  // Efek untuk notifikasi layar penuh
+  // Efek untuk menangani notifikasi layar penuh
   useEffect(() => {
     if (isReady && !audioRef.current) {
       audioRef.current = new Audio('/sounds/notification.wav');
       audioRef.current.loop = true;
     }
+    
     if (isReady) {
       audioRef.current?.play().catch(e => console.log("Audio diblokir, perlu interaksi"));
       if ('vibrate' in navigator) {
-        navigator.vibrate([500, 200, 500, 200, 500]);
+        navigator.vibrate([500, 200, 500]);
       }
     } else {
       audioRef.current?.pause();
@@ -152,11 +78,14 @@ export default function QueuePage() {
   }, [isReady]);
 
   const handleGetQueueNumber = async () => {
+    // --- KUNCI #2: "Unlock" audio saat pertama kali tombol diklik ---
     if (!audioUnlockedRef.current) {
+      // Buat dan putar audio kosong untuk mendapatkan izin dari browser
       const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-      silentAudio.play().catch(() => {});
+      silentAudio.play().catch(() => {}); // Abaikan error jika gagal
       audioUnlockedRef.current = true;
     }
+
     try {
       const response = await axios.post(`${apiUrl}/api/shops/${shopId}/queues/`, {});
       const newQueueInfo: StoredQueueInfo = { id: response.data.id, queue_number: response.data.queue_number, shopId: shopId };
@@ -246,23 +175,6 @@ export default function QueuePage() {
               </div>
             </>
           )}
-          
-           <div className="mt-6 text-center">
-            {notificationStatus === 'idle' && !isAppleDevice && (
-              <button onClick={handleEnableNotifications} className="text-xs text-gray-400 hover:text-white underline">
-                Aktifkan Notifikasi Lanjutan (jika browser ditutup)
-              </button>
-            )}
-            {notificationStatus === 'idle' && isAppleDevice && (
-              <p className="text-xs text-gray-500">
-                Untuk notifikasi di luar browser, tambahkan halaman ini ke Layar Utama Anda.
-              </p>
-            )}
-            {notificationStatus === 'subscribing' && <p className="text-xs text-yellow-400">Mengaktifkan...</p>}
-            {notificationStatus === 'subscribed' && <p className="text-xs text-green-400">✓ Notifikasi lanjutan aktif.</p>}
-            {notificationStatus === 'denied' && <p className="text-xs text-red-400">Anda telah memblokir notifikasi.</p>}
-            {notificationStatus === 'unsupported' && <p className="text-xs text-gray-500">Browser tidak mendukung fitur ini.</p>}
-          </div>
         </div>
       </main>
     </>
