@@ -36,6 +36,8 @@ export default function OwnerDashboard() {
   const [avgWaitTime, setAvgWaitTime] = useState<AvgWaitTimeData>({ average_wait_seconds: 0 });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
   const fetchAnalyticsData = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -129,7 +131,7 @@ export default function OwnerDashboard() {
         await api.delete(`/shops/my-shop/staff/${staffId}/delete/`);
         setStaffList(prevList => prevList.filter(staff => staff.id !== staffId));
       } catch (error) {
-        console.error("Gagal mengambil data:", error);
+        console.error("Gagal menghapus staf:", error);
         alert("Gagal menghapus staf.");
       }
     }
@@ -156,7 +158,6 @@ export default function OwnerDashboard() {
 
   const handleDownloadQRCode = async () => {
     if (!shop) return;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     try {
       const response = await axios.get(`${apiUrl}/api/shops/${shop.id}/qr-code/`, {
         responseType: 'blob',
@@ -183,8 +184,6 @@ export default function OwnerDashboard() {
       </ProtectedRoute>
     );
   }
-  
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
   return (
     <ProtectedRoute>
