@@ -61,19 +61,16 @@ export default function QueuePage() {
   // Efek untuk menangani notifikasi layar penuh
   useEffect(() => {
     if (isReady && !audioRef.current) {
-      // Buat objek audio dan atur agar berulang
       audioRef.current = new Audio('/sounds/notification.wav');
       audioRef.current.loop = true;
     }
     
     if (isReady) {
       audioRef.current?.play().catch(e => console.log("Audio diblokir, perlu interaksi"));
-      // Coba getarkan ponsel
       if ('vibrate' in navigator) {
-        navigator.vibrate([500, 200, 500]); // Getar, jeda, getar
+        navigator.vibrate([500, 200, 500]);
       }
     } else {
-      // Hentikan suara jika status tidak lagi 'ready'
       audioRef.current?.pause();
     }
   }, [isReady]);
@@ -90,10 +87,21 @@ export default function QueuePage() {
     }
   };
 
-  const handleStopNotification = () => {
-    // Tombol ini akan menghentikan suara dan getaran
-    setIsReady(false); // Ini akan memicu useEffect di atas untuk menghentikan suara
-    // Kita tidak menghapus sesi, hanya mematikan notifikasi
+  // --- KUNCI PERBAIKAN: Fungsi ini sekarang yang akan digunakan ---
+  const handleSessionEnd = () => {
+    // Hentikan suara
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // Reset audio ke awal
+    }
+    // Hentikan getaran
+    if ('vibrate' in navigator) {
+      navigator.vibrate(0);
+    }
+    // Hapus sesi dari localStorage dan reset state
+    localStorage.removeItem('mochafolk-queue');
+    setYourQueueInfo(null);
+    setIsReady(false);
   };
 
   if (isLoading) {
@@ -104,7 +112,6 @@ export default function QueuePage() {
     );
   }
 
-  // --- KUNCI PERBAIKAN: Tampilan Notifikasi Layar Penuh ---
   if (isReady) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-green-500 text-white animate-pulse">
@@ -112,11 +119,12 @@ export default function QueuePage() {
           <h1 className="text-2xl font-semibold tracking-widest">PESANAN SIAP</h1>
           <p className="text-9xl font-bold my-4">{yourQueueInfo?.queue_number}</p>
           <p className="text-xl">Silakan ambil pesanan Anda</p>
+          {/* --- KUNCI PERBAIKAN: Tombol ini sekarang memanggil handleSessionEnd --- */}
           <button
-            onClick={handleStopNotification}
+            onClick={handleSessionEnd}
             className="mt-8 w-full bg-white text-green-600 font-bold py-4 rounded-lg text-lg"
           >
-            Matikan Notifikasi
+            Selesai
           </button>
         </div>
       </main>
