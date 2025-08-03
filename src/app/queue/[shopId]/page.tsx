@@ -143,12 +143,13 @@ export default function QueuePage() {
         <div className="w-full max-w-sm text-center text-white">
           <div className="flex justify-center items-center flex-col mb-8">
             {shop?.logo && (
-              <img 
-                src={`${apiUrl}${shop.logo}`} 
-                alt="Logo Toko"
-                className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#A47E65]/50"
-              />
-            )}
+                  // --- KUNCI PERBAIKAN: Gunakan shop.logo secara langsung ---
+                  <img 
+                    src={shop.logo} 
+                    alt="Logo Toko"
+                    className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#A47E65]/50"
+                  />
+                )}
             <h1 className="text-5xl font-bold" style={{ fontFamily: 'Amatic SC, cursive' }}>
               {shop?.name || 'MochaFolk'}
             </h1>
